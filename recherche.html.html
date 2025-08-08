@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recherche de Mercuriale #ClicChef</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .search-container { margin-bottom: 20px; }
+        #search-box { width: 100%; max-width: 500px; padding: 10px; font-size: 16px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+
+    <h1>Recherche de produits #ClicChef</h1>
+    <p>Trouvez les meilleurs prix pour vos légumes et fournisseurs.</p>
+
+    <div class="search-container">
+        <input type="text" id="search-box" placeholder="Rechercher un produit (ex: tomates)...">
+    </div>
+
+    <div id="results">
+        <table>
+            <thead>
+                <tr>
+                    <th>Produit</th>
+                    <th>Prix au kg (€)</th>
+                    <th>Enseigne</th>
+                    <th>Origine</th>
+                </tr>
+            </thead>
+            <tbody id="results-table-body">
+                </tbody>
+        </table>
+    </div>
+
+    <script>
+        // URL de votre Google Sheet publiée en CSV
+        const GOOGLE_SHEET_URL = ’https://docs.google.com/spreadsheets/d/e/2PACX-1vSFoyQBco5GkUsnqT-fLqfcJLbGWLKj_hZ02t_2hOsueFChMZif8gVqi7m-0LYJmg/pub?gid=645527057&single=true&output=csv’       
+;
+        // ATTENTION : Remplacez l'URL ci-dessus par l'URL CSV que vous avez générée !
+
+        const searchBox = document.getElementById('search-box');
+        const resultsTableBody = document.getElementById('results-table-body');
+        let allProducts = [];
+
+        // Fonction pour récupérer les données de la Google Sheet
+        async function fetchProducts() {
+            try {
+                const response = await fetch(GOOGLE_SHEET_URL);
+                const csvText = await response.text();
+                // Analyser le CSV et le transformer en tableau d'objets
+                allProducts = csvText.split('\n').slice(1).map(line => {
+                    const [Categorie, Produit, Calibre, Prix_au_kg, Logos, Enseignes, Origine, Label, Dates, Visuels, Villes] = line.split(',');
+                    return {
+                        Produit,
+                        Prix_au_kg: parseFloat(Prix_au_kg.replace(',', '.')), // Convertir le prix en nombre
+                        Enseignes,
+                        Origine
+                    };
+                });
+                console.log('Données chargées :', allProducts);
+            } catch (error) {
+                console.error('Erreur lors du chargement des données :', error);
+                resultsTableBody.innerHTML = '<tr><td colspan="4">Impossible de charger les données.</td></tr>';
+            }
+        }
+
+        // Fonction pour afficher les résultats
+        function displayResults(query) {
+            resultsTableBody.innerHTML = ''; // Vider la table
+            
+            if (query.length < 2) { // Ne pas chercher si moins de 2 caractères
+                return;
+            }
+
+            const lowerCaseQuery = query.toLowerCase();
+
+            // Filtrer les produits qui correspondent à la recherche
+            const filteredProducts = allProducts.filter(item => 
+                item.Produit && item.Produit.toLowerCase().includes(lowerCaseQuery)
+            );
+
+            // Trier les produits par prix croissant
+            filteredProducts.sort((a, b) => a.Prix_au_kg - b.Prix_au_kg);
+
+            // Afficher seulement les 3 premiers résultats
+            const top3 = filteredProducts.slice(0, 3);
+
+            if (top3.length === 0) {
+                resultsTableBody.innerHTML = `<tr><td colspan="4">Aucun résultat trouvé pour "${query}".</td></tr>`;
+                return;
+            }
+
+            top3.forEach(product => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${product.Produit}</td>
+                    <td>${product.Prix_au_kg.toFixed(2)} €</td>
+                    <td>${product.Enseignes}</td>
+                    <td>${product.Origine}</td>
+                `;
+                resultsTableBody.appendChild(row);
+            });
+        }
+
+        // Écouter les saisies dans la search box
+        searchBox.addEventListener('input', (event) => {
+            displayResults(event.target.value);
+        });
+        
+        // Charger les données au démarrage
+        fetchProducts();
+    </script>
+
+</body>
+</html>
+
